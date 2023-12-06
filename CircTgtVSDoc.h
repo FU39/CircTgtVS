@@ -17,6 +17,12 @@ public:
 
 // 操作
 public:
+	HGLOBAL m_hDIB;
+	LPBITMAPINFO m_lpInfo;					// 图像 InfoHeader+index 内存起始地址
+	LPBITMAPINFOHEADER m_lpInfoHeader;		// 图像 InfohHeader 内存起始地址
+	RGBQUAD* m_lpRGBQuad;					// 图像如果使用颜色索引，该指针指向内存中颜色索引部分的起始地址
+	UINT m_nTotalColors;					// 图像的色深度,单位 bits
+	BYTE* m_lpData;							// 图像 data 内存起始地址
 
 // 重写
 public:
@@ -30,6 +36,7 @@ public:
 // 实现
 public:
 	virtual ~CCircTgtVSDoc();
+	void OpenFile(CString szFileName);
 #ifdef _DEBUG
 	virtual void AssertValid() const;
 	virtual void Dump(CDumpContext& dc) const;

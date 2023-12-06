@@ -45,6 +45,9 @@ public:
 	afx_msg LRESULT OnDlgSelFile(WPARAM wParam, LPARAM lParam);
 	CString m_csPath;
 	CString* m_csFileList;
+	int m_nIndex;
+	BOOL m_bOpen;
+	long m_lWidth, m_lHeight;
 };
 
 #ifndef _DEBUG  // CircTgtVSView.cpp 中的调试版本

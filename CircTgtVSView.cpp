@@ -37,8 +37,12 @@ END_MESSAGE_MAP()
 CCircTgtVSView::CCircTgtVSView() noexcept
 {
 	// TODO: 在此处添加构造代码
+	m_csPath = _T("");
 	m_csFileList = nullptr;
-
+	m_nIndex = 0;
+	m_bOpen = FALSE;
+	m_lWidth = 0;
+	m_lHeight = 0;
 }
 
 CCircTgtVSView::~CCircTgtVSView()
@@ -55,7 +59,7 @@ BOOL CCircTgtVSView::PreCreateWindow(CREATESTRUCT& cs)
 
 // CCircTgtVSView 绘图
 
-void CCircTgtVSView::OnDraw(CDC* /*pDC*/)
+void CCircTgtVSView::OnDraw(CDC* pDC)
 {
 	CCircTgtVSDoc* pDoc = GetDocument();
 	ASSERT_VALID(pDoc);
@@ -63,6 +67,60 @@ void CCircTgtVSView::OnDraw(CDC* /*pDC*/)
 		return;
 
 	// TODO: 在此处为本机数据添加绘制代码
+	CBrush bkBrush;
+	CBitmap* pOldBitmap, memBitmap;
+	CRect rect;
+	CDC memDC;
+	int nShowW = 0;		// nShowW: 计算图片加背景的宽度
+	int nShowH = 0;		// nShowH: 计算图片加背景的高度
+	int ntop = 0;		// ntop:   图片左上角在背景中的 top 坐标
+	int nleft = 0;		// nleft:  图片左上角在背景中的 left 坐标
+	int nScanLines;
+
+	// 创建一个与屏幕显示兼容的 memory DC
+	// 如果入参为 NULL，则创建一个与应用程序的当前显示器兼容的 memory DC
+	memDC.CreateCompatibleDC(pDC);
+
+	// 设定 bitmap 画纸的大小
+	// 位图的大小可以用窗口的大小，也可以自己定义
+	// e.g. 有滚动条时就要大于当前窗口的大小，在 BitBlt 时决定拷贝 memory 的哪部分到屏幕上
+	GetClientRect(&rect);
+	if (rect.Width() > m_lWidth)
+		nShowW = rect.Width();
+	else
+		nShowW = m_lWidth;
+	if (rect.Height() > m_lHeight)
+		nShowH = rect.Height();
+	else
+		nShowH = m_lHeight;
+	memBitmap.CreateCompatibleBitmap(pDC, nShowW, nShowH);
+
+	// 将位图选入到 memory DC 中
+	// 只有选入了位图的 memory DC 才有地方绘图，画到指定的位图上
+	pOldBitmap = memDC.SelectObject(&memBitmap);
+
+	// 先用背景颜色将位图清除干净
+	bkBrush.CreateHatchBrush(7, RGB(255, 255, 255));		// 设置背景颜色
+	memDC.FillRect(CRect(0, 0, nShowW, nShowH), &bkBrush);
+
+	// 绘图
+	if (rect.Width() > m_lWidth)
+		nleft = (rect.Width() - m_lWidth) / 2;
+	else
+		nleft = 0;
+	if (rect.Height() > m_lHeight)
+		ntop = (rect.Height() - m_lHeight) / 2;
+	else
+		ntop = 0;
+
+	nScanLines = StretchDIBits(memDC.m_hDC, nleft, ntop, m_lWidth, m_lHeight, 0, 0, m_lWidth, m_lHeight, pDoc->m_lpData, pDoc->m_lpInfo, DIB_RGB_COLORS, SRCCOPY);
+	
+	// 将 memory 中的位图拷贝到屏幕上进行显示
+	pDC->BitBlt(0, 0, nShowW, nShowH, &memDC, 0, 0, SRCCOPY);
+
+	// 绘图完成后的清理
+	memBitmap.DeleteObject();
+	memDC.DeleteDC();
 }
 
 
@@ -169,16 +227,25 @@ void CCircTgtVSView::OnPathSel()
 	pDlg->Create(IDD_DIALOG_FILELIST, this);
 	pDlg->ShowWindow(TRUE);
 
-	delete[] m_csFileList;
+	// delete[] m_csFileList;
 	// delete[] pDlg->m_fileList;
 	// delete pDlg;
 }
 
 LRESULT CCircTgtVSView::OnDlgSelFile(WPARAM wParam, LPARAM lParam)
 {
-	// 获取 index
+	CCircTgtVSDoc* pDoc = GetDocument();
+	ASSERT_VALID(pDoc);
+
+	// 参数 lParam 为选中项的 index
+	CString csFile;
 	// 获取 index 对应的文件全路径
+	csFile = m_csPath + "\\" + m_csFileList[lParam];
 	// 打开这个文件
+	pDoc->OpenFile(csFile);
+	m_bOpen = TRUE;
 	// 显示到客户区
+	m_lWidth = (int)pDoc->m_lpInfo->bmiHeader.biWidth;
+	m_lHeight = (int)pDoc->m_lpInfo->bmiHeader.biHeight;
 	return 0;
 }
