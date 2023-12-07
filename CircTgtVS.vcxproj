@@ -183,6 +183,7 @@
     </ResourceCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="Circle4Array.h" />
     <ClInclude Include="CircTgtVS.h" />
     <ClInclude Include="CircTgtVSDoc.h" />
     <ClInclude Include="CircTgtVSView.h" />
@@ -194,6 +195,7 @@
     <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Circle4Array.cpp" />
     <ClCompile Include="CircTgtVS.cpp" />
     <ClCompile Include="CircTgtVSDoc.cpp" />
     <ClCompile Include="CircTgtVSView.cpp" />

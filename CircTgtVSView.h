@@ -4,6 +4,8 @@
 
 #pragma once
 
+#include "Circle4Array.h"
+
 
 class CCircTgtVSView : public CView
 {
@@ -42,12 +44,15 @@ protected:
 	DECLARE_MESSAGE_MAP()
 public:
 	afx_msg void OnPathSel();
+	afx_msg void OnFileBat();
 	afx_msg LRESULT OnDlgSelFile(WPARAM wParam, LPARAM lParam);
-	CString m_csPath;
-	CString* m_csFileList;
+	CString m_csPath;						// 目录路径
+	CString* m_csFileList;					// 目录下文件列表
+	int m_nFileSum;							// 目录下文件总数
 	int m_nIndex;
 	BOOL m_bOpen;
 	long m_lWidth, m_lHeight;
+	CCircle4Array* m_pCircle;
 };
 
 #ifndef _DEBUG  // CircTgtVSView.cpp 中的调试版本

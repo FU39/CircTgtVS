@@ -30,6 +30,7 @@ BEGIN_MESSAGE_MAP(CCircTgtVSView, CView)
 	ON_COMMAND(ID_FILE_PRINT_PREVIEW, &CView::OnFilePrintPreview)
 	ON_COMMAND(ID_PATH_SEL, &CCircTgtVSView::OnPathSel)
 	ON_MESSAGE(USER_MSG_SELFILE, &CCircTgtVSView::OnDlgSelFile)
+	ON_COMMAND(ID_FILE_BAT, &CCircTgtVSView::OnFileBat)
 END_MESSAGE_MAP()
 
 // CCircTgtVSView 构造/析构
@@ -39,10 +40,12 @@ CCircTgtVSView::CCircTgtVSView() noexcept
 	// TODO: 在此处添加构造代码
 	m_csPath = _T("");
 	m_csFileList = nullptr;
+	m_nFileSum = 0;
 	m_nIndex = 0;
 	m_bOpen = FALSE;
 	m_lWidth = 0;
 	m_lHeight = 0;
+	m_pCircle = nullptr;
 }
 
 CCircTgtVSView::~CCircTgtVSView()
@@ -114,7 +117,7 @@ void CCircTgtVSView::OnDraw(CDC* pDC)
 		ntop = 0;
 
 	nScanLines = StretchDIBits(memDC.m_hDC, nleft, ntop, m_lWidth, m_lHeight, 0, 0, m_lWidth, m_lHeight, pDoc->m_lpData, pDoc->m_lpInfo, DIB_RGB_COLORS, SRCCOPY);
-	
+
 	// 将 memory 中的位图拷贝到屏幕上进行显示
 	pDC->BitBlt(0, 0, nShowW, nShowH, &memDC, 0, 0, SRCCOPY);
 
@@ -182,7 +185,6 @@ void CCircTgtVSView::OnPathSel()
 	CString csPath;
 	CFileFind finder;
 	BOOL bWorking;
-	int fileSum = 0;
 	int i = 0;
 
 	ZeroMemory(&bi, sizeof(BROWSEINFO));
@@ -200,16 +202,17 @@ void CCircTgtVSView::OnPathSel()
 	csPath = m_csPath + _T("\\*.*");
 	bWorking = finder.FindFile(csPath);
 	// 计算文件数
+	m_nFileSum = 0;
 	while (bWorking)
 	{
 		bWorking = finder.FindNextFile();
 		if (!finder.IsDirectory() && !finder.IsDots())
 		{
-			fileSum++;
+			m_nFileSum++;
 		}
 	}
 	// 存入动态 csFileList
-	m_csFileList = new CString[fileSum];
+	m_csFileList = new CString[m_nFileSum];
 	bWorking = finder.FindFile(csPath);
 	while (bWorking)
 	{
@@ -223,9 +226,9 @@ void CCircTgtVSView::OnPathSel()
 
 	// 将内容传递给 FileList 非模态对话框并调用之
 	CDlgFileList* pDlg = new CDlgFileList;
-	pDlg->m_fileList = new CString[fileSum];
-	pDlg->m_listLen = fileSum;
-	for (i = 0; i < fileSum; i++)
+	pDlg->m_fileList = new CString[m_nFileSum];
+	pDlg->m_listLen = m_nFileSum;
+	for (i = 0; i < m_nFileSum; i++)
 	{
 		pDlg->m_fileList[i] = m_csFileList[i];
 	}
@@ -234,7 +237,7 @@ void CCircTgtVSView::OnPathSel()
 	pDlg->ShowWindow(TRUE);
 
 	// delete[] m_csFileList;
-	// delete[] pDlg->m_fileList;
+	delete[] pDlg->m_fileList;
 	// delete pDlg;
 }
 
@@ -254,4 +257,14 @@ LRESULT CCircTgtVSView::OnDlgSelFile(WPARAM wParam, LPARAM lParam)
 	m_lWidth = (int)pDoc->m_lpInfo->bmiHeader.biWidth;
 	m_lHeight = (int)pDoc->m_lpInfo->bmiHeader.biHeight;
 	return 0;
+}
+
+
+void CCircTgtVSView::OnFileBat()
+{
+	// TODO: 在此添加命令处理程序代码
+	CCircTgtVSDoc* pDoc = GetDocument();
+	ASSERT_VALID(pDoc);
+
+	m_pCircle = pDoc->BatchDetectArray(m_csPath, m_csFileList, m_nFileSum);
 }

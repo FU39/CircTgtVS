@@ -5,6 +5,8 @@
 
 #pragma once
 
+#include "Circle4Array.h"
+
 
 class CCircTgtVSDoc : public CDocument
 {
@@ -37,8 +39,9 @@ public:
 public:
 	virtual ~CCircTgtVSDoc();
 	void OpenFile(CString szFileName);
-	BYTE* RGB2TwoValue();
 	void Image2BlackWhite();
+	BYTE* RGB2TwoValue(BYTE* pbDib);
+	CCircle4Array* BatchDetectArray(CString szPath, CString* szFileList, int nFileSum);
 #ifdef _DEBUG
 	virtual void AssertValid() const;
 	virtual void Dump(CDumpContext& dc) const;

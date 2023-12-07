@@ -42,6 +42,9 @@
     <ClInclude Include="DlgFileList.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="Circle4Array.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="CircTgtVS.cpp">
@@ -60,6 +63,9 @@
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="DlgFileList.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="Circle4Array.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>

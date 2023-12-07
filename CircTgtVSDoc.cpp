@@ -39,7 +39,6 @@ CCircTgtVSDoc::CCircTgtVSDoc() noexcept
 	m_lpRGBQuad = nullptr;
 	m_nTotalColors = 0;
 	m_lpData = nullptr;
-
 }
 
 CCircTgtVSDoc::~CCircTgtVSDoc()
@@ -155,14 +154,11 @@ void CCircTgtVSDoc::Dump(CDumpContext& dc) const
 void CCircTgtVSDoc::OpenFile(CString szFileName)
 {
 	CFile file;
-	CString szBmpFileName;
 	LPBITMAPFILEHEADER lpFileHeader = nullptr;
 	BYTE* pbDib = nullptr;
 	long lResult, lBmpWidthBytes, lSize;
 
-	szBmpFileName = szFileName;
-
-	file.Open(szBmpFileName, CFile::modeRead);	// 读模式打开文件
+	file.Open(szFileName, CFile::modeRead);	// 读模式打开文件
 	try
 	{
 		// 读入位图文件头信息
@@ -227,10 +223,6 @@ void CCircTgtVSDoc::OpenFile(CString szFileName)
 	lBmpWidthBytes = WIDTHBYTES(m_lpInfoHeader->biWidth * m_lpInfoHeader->biBitCount);
 	m_lpInfoHeader->biSizeImage = lBmpWidthBytes * m_lpInfoHeader->biHeight;
 
-//	RGB2TwoValue();
-
-//	WriteData2GlobalBuf();
-
 	AfxGetApp()->EndWaitCursor();
 	/**/
 	UpdateAllViews(NULL);
@@ -240,41 +232,10 @@ void CCircTgtVSDoc::OpenFile(CString szFileName)
 	pbDib = nullptr;
 }
 
-BYTE* CCircTgtVSDoc::RGB2TwoValue()
-{
-	LONG row = m_lpInfoHeader->biHeight;
-	LONG column = m_lpInfoHeader->biWidth;
-	BYTE* lpTwoValueData = nullptr;		// 图像二值化数据
-	int k = 0;
-	int pixelValue = 0;
-
-	lpTwoValueData = new BYTE[row * (column + 3) / 4 * 4];
-
-	// 24 位色深数据 转为 8 位色深数据，且将灰度图二值化
-	for (int i = 0; i < row; i++)
-	{
-		for (int j = 0; j < column; j++)
-		{
-			pixelValue = (int)(0.114 * (float)m_lpData[k] + 0.587 * (float)m_lpData[k + 1] + 0.299 * (float)m_lpData[k + 2]);
-			// 将灰度值转化为二值，这里选取的阈值为 160-190 都可以
-			if (pixelValue >= 160)
-			{
-				lpTwoValueData[i * column + j] = 0;
-			}
-			else
-			{
-				lpTwoValueData[i * column + j] = 1;
-			}
-			k += 3;
-		}
-	}
-	return lpTwoValueData;
-}
-
 void CCircTgtVSDoc::Image2BlackWhite()
 {
-	CFile sourceFile, desFile;
-	CString sourceFileName, desFileName;
+	CFile srcFile, desFile;
+	CString srcFileName, desFileName;
 	LPBITMAPFILEHEADER fileHeader = nullptr;
 	BYTE* pbDib = nullptr;
 	LPBITMAPINFOHEADER infoHeader = nullptr;
@@ -282,23 +243,21 @@ void CCircTgtVSDoc::Image2BlackWhite()
 	BYTE* sourceData = nullptr;
 	RGBQUAD* ipRGB = nullptr;
 	BYTE* desData = nullptr;
-	long lResult, lSize;
+	long lResult, lSize, lSrcWidthBytes, lDesWidthBytes, lHeight, lWidth;
 	UINT nTotalColors = 0;
 	DWORD dwColorTableSize = 0;
 	BOOL isSuccess = FALSE;
-	LONG row = 0;
-	LONG column = 0;
-	int k = 0;
 	int pixelValue = 0;
+	int k = 0;
 
-	sourceFileName = _T("F:\\0_coding\\TestFiles\\MOBJ0.bmp");
-	isSuccess = sourceFile.Open(sourceFileName, CFile::modeRead);	// 读模式打开文件
+	srcFileName = _T("F:\\0_coding\\TestFiles\\MOBJ0.bmp");
+	isSuccess = srcFile.Open(srcFileName, CFile::modeRead);	// 读模式打开文件
 	fileHeader = new BITMAPFILEHEADER;
-	lResult = sourceFile.Read(fileHeader, sizeof(BITMAPFILEHEADER));
-	lSize = (long)sourceFile.GetLength() - sizeof(BITMAPFILEHEADER);
+	lResult = srcFile.Read(fileHeader, sizeof(BITMAPFILEHEADER));
+	lSize = (long)srcFile.GetLength() - sizeof(BITMAPFILEHEADER);
 	pbDib = new BYTE[lSize];
-	lResult = sourceFile.Read(pbDib, lSize);
-	sourceFile.Close();
+	lResult = srcFile.Read(pbDib, lSize);
+	srcFile.Close();
 	infoHeader = (LPBITMAPINFOHEADER)pbDib;
 	// 颜色数
 	if ((infoHeader->biClrUsed == 0) && (infoHeader->biBitCount < 9))
@@ -319,11 +278,11 @@ void CCircTgtVSDoc::Image2BlackWhite()
 	if ((lpRGBQuad == (RGBQUAD*)sourceData) || (nTotalColors == 0))
 		lpRGBQuad = nullptr;
 
-	row = infoHeader->biHeight;
-	column = infoHeader->biWidth;
+	lHeight = infoHeader->biHeight;
+	lWidth = infoHeader->biWidth;
+	lSrcWidthBytes = WIDTHBYTES(infoHeader->biWidth * infoHeader->biBitCount);
 
 	ipRGB = new RGBQUAD[2];
-	desData= new BYTE[(column + 3) / 4 * 4];
 
 	isSuccess = FALSE;
 	desFileName = _T("F:\\0_coding\\TestFiles\\0.bmp");
@@ -332,7 +291,8 @@ void CCircTgtVSDoc::Image2BlackWhite()
 	// 修改信息头
 	// 信息头共有 11 部分，灰度化时需要修改 4 部分
 	infoHeader->biBitCount = 8;	// 转换成二值图后，颜色深度由 24 位变为 8 位
-	infoHeader->biSizeImage = ((infoHeader->biWidth + 3) / 4) * 4 * infoHeader->biHeight;
+	lDesWidthBytes = WIDTHBYTES(infoHeader->biWidth * infoHeader->biBitCount);
+	infoHeader->biSizeImage = lDesWidthBytes * infoHeader->biHeight;
 	infoHeader->biClrUsed = 2;	// 颜色索引表数量，二值图为 2
 	infoHeader->biClrImportant = 0;	// 重要颜色索引为 0，表示都重要
 	//修改文件头
@@ -347,12 +307,14 @@ void CCircTgtVSDoc::Image2BlackWhite()
 	desFile.Write(infoHeader, sizeof(BITMAPINFOHEADER));
 	desFile.Write(ipRGB, 2 * sizeof(RGBQUAD));
 
+	desData = new BYTE[lDesWidthBytes];
+
 	// 24 位色深数据 转为 8 位色深数据，且将灰度图二值化
-	for (int i = 0; i < row; i++)
+	for (int i = 0; i < lHeight; i++)
 	{
-		for (int j = 0; j < column; j++)
+		for (int j = 0; j < lWidth; j++)
 		{
-			pixelValue = (int)(0.114 * (float)sourceData[k] + 0.587 * (float)sourceData[k + 1] + 0.299 * (float)sourceData[k + 2]);
+			pixelValue = (int)(0.114 * (float)sourceData[i * lSrcWidthBytes + 3 * j] + 0.587 * (float)sourceData[i * lSrcWidthBytes + 3 * j + 1] + 0.299 * (float)sourceData[i * lSrcWidthBytes + 3 * j + 2]);
 			// 将灰度值转化为二值，这里选取的阈值为 160-190 都可以
 			if (pixelValue >= 160)
 			{
@@ -362,9 +324,12 @@ void CCircTgtVSDoc::Image2BlackWhite()
 			{
 				desData[j] = 1;	// 黑色
 			}
-			k += 3;
 		}
-		desFile.Write(desData, (column + 3) / 4 * 4);
+		for (int k = lWidth; k < lDesWidthBytes; k++)
+		{
+			desData[k] = 0x00;
+		}
+		desFile.Write(desData, lDesWidthBytes);
 	}
 	desFile.Close();
 
@@ -379,4 +344,270 @@ void CCircTgtVSDoc::Image2BlackWhite()
 	sourceData = nullptr;
 	ipRGB = nullptr;
 	desData = nullptr;
+}
+
+/**
+* 24 位色深图像数据二值化函数
+*
+* @return 图像数据二值化数组
+*/
+BYTE* CCircTgtVSDoc::RGB2TwoValue(BYTE* pbDib)
+{
+	LPBITMAPINFOHEADER infoHeader = nullptr;
+	RGBQUAD* lpRGBQuad = nullptr;
+	BYTE* lpData = nullptr;				// 图像数据
+	BYTE* lpTwoValueData = nullptr;		// 图像二值化数据
+	long lWidthBytes, lHeight, lWidth;
+	UINT nTotalColors = 0;
+	DWORD dwColorTableSize = 0;
+	BOOL isSuccess = FALSE;
+	int pixelValue = 0;
+
+	infoHeader = (LPBITMAPINFOHEADER)pbDib;
+	// 颜色数
+	if ((infoHeader->biClrUsed == 0) && (infoHeader->biBitCount < 9))
+		nTotalColors = (UINT)pow(2, infoHeader->biBitCount);
+	else
+		nTotalColors = (UINT)infoHeader->biClrUsed;
+
+	if (infoHeader->biClrUsed == 0)
+		infoHeader->biClrUsed = nTotalColors;
+
+	// 指向位图颜色索引表项的指针，如果没有颜色索引表，则该值为 nullptr
+	lpRGBQuad = (RGBQUAD*)(pbDib + infoHeader->biSize);
+	// 颜色索引表的大小(字节)
+	dwColorTableSize = nTotalColors * sizeof(RGBQUAD);
+	// 指向位图数据的指针
+	lpData = pbDib + infoHeader->biSize + nTotalColors * sizeof(RGBQUAD);
+	// 如果没有颜色索引表，则该值为 nullptr
+	if ((lpRGBQuad == (RGBQUAD*)lpData) || (nTotalColors == 0))
+		lpRGBQuad = nullptr;
+
+	lHeight = infoHeader->biHeight;
+	lWidth = infoHeader->biWidth;
+	lWidthBytes = WIDTHBYTES(infoHeader->biWidth * infoHeader->biBitCount);
+
+	// 若不是 24 位色深图，返回空指针
+	if (lpRGBQuad != nullptr)
+	{
+		infoHeader = nullptr;
+		lpRGBQuad = nullptr;
+		lpData = nullptr;
+		return nullptr;
+	}
+
+	lpTwoValueData = new BYTE[lHeight * lWidth];
+
+	// 24 位色深数据 转为 8 位色深数据，且将灰度图二值化
+	for (int i = 0; i < lHeight; i++)
+	{
+		for (int j = 0; j < lWidth; j++)
+		{
+			pixelValue = (int)(0.114 * (float)lpData[i * lWidthBytes + 3 * j] + 0.587 * (float)lpData[i * lWidthBytes + 3 * j + 1] + 0.299 * (float)lpData[i * lWidthBytes + 3 * j + 2]);
+			// 将灰度值转化为二值，这里选取的阈值为 160-190 都可以
+			if (pixelValue >= 160)
+			{
+				lpTwoValueData[i * lWidth + j] = 0;		// 白色
+			}
+			else
+			{
+				lpTwoValueData[i * lWidth + j] = 1;		// 黑色
+			}
+		}
+	}
+
+	infoHeader = nullptr;
+	lpRGBQuad = nullptr;
+	lpData = nullptr;
+
+	return lpTwoValueData;
+}
+
+/**
+* 批量目标检测函数
+* - 检测原理: 通过行扫描作为切线寻找圆;
+* - 也可以使用 opencv 实现目标检测，detect-from-array branch 未使用，计划在 detect-by-opencv branch 中实现;
+* - 由于多目标文件仅有 2 个圆，故简化了检测难度;
+* - 本检测方法以方块作为圆检测边缘，故若多个圆的方块边缘有重叠时无法检测，有较大局限性
+* 
+* @return 圆对象指针
+*/
+CCircle4Array* CCircTgtVSDoc::BatchDetectArray(CString szPath, CString* szFileList, int nFileSum)
+{
+	CString szFileName;
+	CFile file;
+	LPBITMAPFILEHEADER fileHeader = nullptr;
+	BYTE* pbDib = nullptr;
+	LPBITMAPINFOHEADER infoHeader = nullptr;
+	long lResult, lSize, lHeight, lWidth;
+	UINT nTotalColors = 0;
+	DWORD dwColorTableSize = 0;
+	BOOL isSuccess = FALSE;
+	int pixelValue = 0;
+	BYTE* lpBiData = nullptr;		// 图像二值化数据
+	int circCount, startWidth, endWidth, startHeight, endHeight;
+	BOOL countChange = FALSE;
+	BOOL inCirc = FALSE;
+	long lCenterH, lCenterW, lRadius;
+	CCircle4Array* pCircle = nullptr;		// 圆对象指针
+
+	// 分配 2 * nFileSum 空间
+	pCircle = new CCircle4Array[2 * nFileSum];
+
+	// 批量处理
+	for (int i = 0; i < nFileSum; i++)
+	{
+		szFileName = szPath + "\\" + szFileList[i];
+		isSuccess = file.Open(szFileName, CFile::modeRead);		// 读模式打开文件
+		fileHeader = new BITMAPFILEHEADER;
+		lResult = file.Read(fileHeader, sizeof(BITMAPFILEHEADER));
+		lSize = (long)file.GetLength() - sizeof(BITMAPFILEHEADER);
+		pbDib = new BYTE[lSize];
+		lResult = file.Read(pbDib, lSize);
+		file.Close();
+
+		// 获取图像二值化数据，注意 BMP 中行数据为倒序
+		// 二值化数据中 0: 白色，1: 黑色
+		lpBiData = RGB2TwoValue(pbDib);
+		infoHeader = (LPBITMAPINFOHEADER)pbDib;
+		lHeight = infoHeader->biHeight;
+		lWidth = infoHeader->biWidth;
+
+		// 目标检测
+		circCount = 0;
+		countChange = FALSE;
+		startWidth = 0;
+		endWidth = 0;
+		startHeight = 0;
+		endHeight = 0;
+		// 准备检测第 1 个圆
+		if (circCount == 0)
+		{
+			for (int j = 0; j < lHeight; j++)
+			{
+				// 已检测到圆，退出循环
+				if (countChange)
+					break;
+				for (int k = 0; k < lWidth; k++)
+				{
+					// 检测到圆
+					if (lpBiData[j * lWidth + k] == 1)
+					{
+						circCount++;
+						countChange = TRUE;
+						startHeight = j;
+						startWidth = k;
+						while (lpBiData[j * lWidth + k] && k < lWidth)
+							k++;
+						endWidth = k - 1;
+						// 纵向移动行切线，寻找 end 边缘
+						endHeight = j;
+						while (lpBiData[endHeight * lWidth + startWidth] == 1 || lpBiData[endHeight * lWidth + endWidth] == 1)
+							endHeight++;
+						for (int l = startWidth; l <= endWidth; l++)
+						{
+							if (lpBiData[endHeight * lWidth + l])
+								inCirc = TRUE;
+						}
+						if (!inCirc)
+							endHeight--;
+						// 获取第 1 个圆的数据
+						lCenterH = (startHeight + endHeight) / 2;
+						lCenterW = (startWidth + endWidth) / 2;
+						lRadius = (endHeight - startHeight + 1) / 2;
+						// 修正 startWidth
+						startWidth = lCenterW - lRadius;
+						while (lpBiData[lCenterH * lWidth + startWidth])
+							startWidth--;
+						while (!lpBiData[lCenterH * lWidth + startWidth])
+							startWidth++;
+						// 修正 endWidth
+						endWidth = lCenterW + lRadius;
+						while (lpBiData[lCenterH * lWidth + endWidth])
+							endWidth++;
+						while (!lpBiData[lCenterH * lWidth + endWidth])
+							endWidth--;
+						pCircle[2 * i + circCount - 1].m_lCenterH = lCenterH;
+						pCircle[2 * i + circCount - 1].m_lCenterW = lCenterW;
+						pCircle[2 * i + circCount - 1].m_lRadius = lRadius;
+						pCircle[2 * i + circCount - 1].m_nStartHeight = startHeight;
+						pCircle[2 * i + circCount - 1].m_nEndHeight = endHeight;
+						pCircle[2 * i + circCount - 1].m_nStartWidth = startWidth;
+						pCircle[2 * i + circCount - 1].m_nEndWidth = endWidth;
+						break;
+					}
+				}
+			}
+		}
+		// 准备检测第 2 个圆
+		if (circCount == 1)
+		{
+			countChange = FALSE;
+			for (int j = 0; j < lHeight; j++)
+			{
+				// 已检测到圆，退出循环
+				if (countChange)
+					break;
+				for (int k = 0; k < lWidth; k++)
+				{
+					// index 在上一个圆的范围内时跳过
+					if (j >= startHeight && j <= endHeight && k >= startWidth && k <= endWidth)
+					{
+						continue;
+					}
+					// 检测到圆
+					if (lpBiData[j * lWidth + k] == 1)
+					{
+						circCount++;
+						countChange = TRUE;
+						startHeight = j;
+						startWidth = k;
+						while (lpBiData[j * lWidth + k] && k < lWidth)
+							k++;
+						endWidth = k - 1;
+						// 纵向移动行切线，寻找 end 边缘
+						endHeight = j;
+						while (lpBiData[endHeight * lWidth + startWidth] == 1 || lpBiData[endHeight * lWidth + endWidth] == 1)
+							endHeight++;
+						for (int l = startWidth; l <= endWidth; l++)
+						{
+							if (lpBiData[endHeight * lWidth + l])
+								inCirc = TRUE;
+						}
+						if (!inCirc)
+							endHeight--;
+						// 获取第 1 个圆的数据
+						lCenterH = (startHeight + endHeight) / 2;
+						lCenterW = (startWidth + endWidth) / 2;
+						lRadius = (endHeight - startHeight + 1) / 2;
+						// 修正 startWidth
+						startWidth = lCenterW - lRadius;
+						while (lpBiData[lCenterH * lWidth + startWidth])
+							startWidth--;
+						while (!lpBiData[lCenterH * lWidth + startWidth])
+							startWidth++;
+						// 修正 endWidth
+						endWidth = lCenterW + lRadius;
+						while (lpBiData[lCenterH * lWidth + endWidth])
+							endWidth++;
+						while (!lpBiData[lCenterH * lWidth + endWidth])
+							endWidth--;
+						pCircle[2 * i + circCount - 1].m_lCenterH = lCenterH;
+						pCircle[2 * i + circCount - 1].m_lCenterW = lCenterW;
+						pCircle[2 * i + circCount - 1].m_lRadius = lRadius;
+						pCircle[2 * i + circCount - 1].m_nStartHeight = startHeight;
+						pCircle[2 * i + circCount - 1].m_nEndHeight = endHeight;
+						pCircle[2 * i + circCount - 1].m_nStartWidth = startWidth;
+						pCircle[2 * i + circCount - 1].m_nEndWidth = endWidth;
+						break;
+					}
+				}
+			}
+		}
+		// 释放内存
+		delete fileHeader;
+		delete[] pbDib;
+	}
+
+	return pCircle;
 }
