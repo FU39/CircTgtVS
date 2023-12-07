@@ -37,6 +37,8 @@ public:
 public:
 	virtual ~CCircTgtVSDoc();
 	void OpenFile(CString szFileName);
+	BYTE* RGB2TwoValue();
+	void Image2BlackWhite();
 #ifdef _DEBUG
 	virtual void AssertValid() const;
 	virtual void Dump(CDumpContext& dc) const;

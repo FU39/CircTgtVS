@@ -119,8 +119,14 @@ void CCircTgtVSView::OnDraw(CDC* pDC)
 	pDC->BitBlt(0, 0, nShowW, nShowH, &memDC, 0, 0, SRCCOPY);
 
 	// 绘图完成后的清理
+	::GlobalFree(pDoc->m_hDIB);
 	memBitmap.DeleteObject();
 	memDC.DeleteDC();
+	pDoc->m_hDIB = nullptr;
+	pDoc->m_lpInfo = nullptr;
+	pDoc->m_lpInfoHeader = nullptr;
+	pDoc->m_lpRGBQuad = nullptr;
+	pDoc->m_lpData = nullptr;
 }
 
 
