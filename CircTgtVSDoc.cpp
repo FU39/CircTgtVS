@@ -33,12 +33,14 @@ END_MESSAGE_MAP()
 CCircTgtVSDoc::CCircTgtVSDoc() noexcept
 {
 	// TODO: 在此添加一次性构造代码
+	m_bOpen = FALSE;
 	m_hDIB = nullptr;
 	m_lpInfo = nullptr;
 	m_lpInfoHeader = nullptr;
 	m_lpRGBQuad = nullptr;
 	m_nTotalColors = 0;
 	m_lpData = nullptr;
+	m_pCircle = nullptr;
 }
 
 CCircTgtVSDoc::~CCircTgtVSDoc()
@@ -52,12 +54,14 @@ BOOL CCircTgtVSDoc::OnNewDocument()
 
 	// TODO: 在此添加重新初始化代码
 	// (SDI 文档将重用该文档)
+	m_bOpen = FALSE;
 	m_hDIB = nullptr;
 	m_lpInfo = nullptr;
 	m_lpInfoHeader = nullptr;
 	m_lpRGBQuad = nullptr;
 	m_nTotalColors = 0;
 	m_lpData = nullptr;
+	m_pCircle = nullptr;
 
 	return TRUE;
 }
@@ -158,7 +162,7 @@ void CCircTgtVSDoc::OpenFile(CString szFileName)
 	BYTE* pbDib = nullptr;
 	long lResult, lBmpWidthBytes, lSize;
 
-	file.Open(szFileName, CFile::modeRead);	// 读模式打开文件
+	m_bOpen = file.Open(szFileName, CFile::modeRead);	// 读模式打开文件
 	try
 	{
 		// 读入位图文件头信息
@@ -178,7 +182,7 @@ void CCircTgtVSDoc::OpenFile(CString szFileName)
 	// 为 DIB 分配全局内存
 	if (m_hDIB != nullptr)
 		GlobalFree(m_hDIB);
-	m_hDIB = (HGLOBAL) ::GlobalAlloc(GMEM_MOVEABLE | GMEM_ZEROINIT, lSize);
+	m_hDIB = (HGLOBAL)::GlobalAlloc(GMEM_MOVEABLE | GMEM_ZEROINIT, lSize);
 
 	// 指向 DIB 实际像素数据的指针
 	pbDib = (BYTE*)::GlobalLock(m_hDIB);
@@ -224,7 +228,8 @@ void CCircTgtVSDoc::OpenFile(CString szFileName)
 	m_lpInfoHeader->biSizeImage = lBmpWidthBytes * m_lpInfoHeader->biHeight;
 
 	AfxGetApp()->EndWaitCursor();
-	/**/
+	// 由于未重载 CView 的 OnUpdate 成员函数，故调用 CView 的 OnUpdate 函数
+	// 其中，已调用 Invalidate(TRUE); 故 OnDlgSelFile 中无需再调用之，即可重绘视图
 	UpdateAllViews(NULL);
 
 	delete lpFileHeader;
@@ -232,6 +237,11 @@ void CCircTgtVSDoc::OpenFile(CString szFileName)
 	pbDib = nullptr;
 }
 
+/**
+* @brief 转黑白图片函数
+* 
+* 测试函数，软件不需要实现输出黑白图片功能，只需要实现能获得二值化的像素数据
+*/
 void CCircTgtVSDoc::Image2BlackWhite()
 {
 	CFile srcFile, desFile;
@@ -285,22 +295,22 @@ void CCircTgtVSDoc::Image2BlackWhite()
 	ipRGB = new RGBQUAD[2];
 
 	isSuccess = FALSE;
-	desFileName = _T("F:\\0_coding\\TestFiles\\0.bmp");
+	desFileName = _T("F:\\0_coding\\MFCProjects\\测试文件\\0.bmp");
 	isSuccess = desFile.Open(desFileName, CFile::modeWrite);		// 写模式打开文件
 
 	// 修改信息头
 	// 信息头共有 11 部分，灰度化时需要修改 4 部分
-	infoHeader->biBitCount = 8;	// 转换成二值图后，颜色深度由 24 位变为 8 位
+	infoHeader->biBitCount = 8;		// 转换成二值图后，颜色深度由 24 位变为 8 位
 	lDesWidthBytes = WIDTHBYTES(infoHeader->biWidth * infoHeader->biBitCount);
 	infoHeader->biSizeImage = lDesWidthBytes * infoHeader->biHeight;
-	infoHeader->biClrUsed = 2;	// 颜色索引表数量，二值图为 2
+	infoHeader->biClrUsed = 2;		// 颜色索引表数量，二值图为 2
 	infoHeader->biClrImportant = 0;	// 重要颜色索引为 0，表示都重要
-	//修改文件头
-	//文件头共有 5 部分，灰度化时需要修改 2 部分
+	// 修改文件头
+	// 文件头共有 5 部分，灰度化时需要修改 2 部分
 	fileHeader->bfOffBits = sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER) + 2 * sizeof(RGBQUAD);	// 数据区偏移量，等于文件头，信息头，索引表的大小之和
-	fileHeader->bfSize = fileHeader->bfOffBits + infoHeader->biSizeImage;	// 文件大小，等于偏移量加上数据区大小
-	ipRGB[1].rgbBlue = ipRGB[1].rgbGreen = ipRGB[1].rgbRed = ipRGB[1].rgbReserved = 0;	// 调色板颜色为黑色对应的索引为 0
-	ipRGB[0].rgbBlue = ipRGB[0].rgbGreen = ipRGB[0].rgbRed = 255;	// 白色对应的索引为 150-255
+	fileHeader->bfSize = fileHeader->bfOffBits + infoHeader->biSizeImage;								// 文件大小，等于偏移量加上数据区大小
+	ipRGB[1].rgbBlue = ipRGB[1].rgbGreen = ipRGB[1].rgbRed = ipRGB[1].rgbReserved = 0;					// 调色板颜色为黑色对应的索引为 0
+	ipRGB[0].rgbBlue = ipRGB[0].rgbGreen = ipRGB[0].rgbRed = 255;										// 白色对应的索引为 150-255
 	ipRGB[1].rgbReserved = 0;
 
 	desFile.Write(fileHeader, sizeof(BITMAPFILEHEADER));
@@ -347,7 +357,7 @@ void CCircTgtVSDoc::Image2BlackWhite()
 }
 
 /**
-* 24 位色深图像数据二值化函数
+* @brief 24 位色深图像数据二值化函数.
 *
 * @return 图像数据二值化数组
 */
@@ -424,15 +434,13 @@ BYTE* CCircTgtVSDoc::RGB2TwoValue(BYTE* pbDib)
 }
 
 /**
-* 批量目标检测函数
-* - 检测原理: 通过行扫描作为切线寻找圆;
-* - 也可以使用 opencv 实现目标检测，detect-from-array branch 未使用，计划在 detect-by-opencv branch 中实现;
-* - 由于多目标文件仅有 2 个圆，故简化了检测难度;
-* - 本检测方法以方块作为圆检测边缘，故若多个圆的方块边缘有重叠时无法检测，有较大局限性
+* @brief 批量目标检测函数.
 * 
-* @return 圆对象指针
+* 检测原理: 通过行扫描作为切线寻找圆.
+* 也可以使用 opencv 实现目标检测，detect-from-array branch 未使用，计划在 detect-by-opencv branch 中实现.
+* 本检测方法以方块作为圆检测边缘，故若多个圆的方块边缘有重叠时无法检测，有一定局限性.
 */
-CCircle4Array* CCircTgtVSDoc::BatchDetectArray(CString szPath, CString* szFileList, int nFileSum)
+void CCircTgtVSDoc::BatchDetectArray(CString szPath, CString* szFileList, int nFileSum)
 {
 	CString szFileName;
 	CFile file;
@@ -445,14 +453,18 @@ CCircle4Array* CCircTgtVSDoc::BatchDetectArray(CString szPath, CString* szFileLi
 	BOOL isSuccess = FALSE;
 	int pixelValue = 0;
 	BYTE* lpBiData = nullptr;		// 图像二值化数据
-	int circCount, startWidth, endWidth, startHeight, endHeight;
-	BOOL countChange = FALSE;
-	BOOL inCirc = FALSE;
+	int startWidth, endWidth, startHeight, endHeight;
+	BOOL bIndexPass = FALSE;		// 判断 index 是否要跳过
+	BOOL inCirc = FALSE;			// 判断索引的 pixel 是否仍在圆内
 	long lCenterH, lCenterW, lRadius;
-	CCircle4Array* pCircle = nullptr;		// 圆对象指针
 
-	// 分配 2 * nFileSum 空间
-	pCircle = new CCircle4Array[2 * nFileSum];
+	// 根据文件数量为 m_pCircle 分配空间
+	if (m_pCircle != nullptr)
+	{
+		delete[] m_pCircle;
+		m_pCircle = nullptr;
+	}
+	m_pCircle = new CCircle4Array[nFileSum];
 
 	// 批量处理
 	for (int i = 0; i < nFileSum; i++)
@@ -466,6 +478,9 @@ CCircle4Array* CCircTgtVSDoc::BatchDetectArray(CString szPath, CString* szFileLi
 		lResult = file.Read(pbDib, lSize);
 		file.Close();
 
+		// 定义 m_pCircle[i] 对应的文件
+		m_pCircle[i].m_sz4WhichFile = szFileName;
+
 		// 获取图像二值化数据，注意 BMP 中行数据为倒序
 		// 二值化数据中 0: 白色，1: 黑色
 		lpBiData = RGB2TwoValue(pbDib);
@@ -474,140 +489,101 @@ CCircle4Array* CCircTgtVSDoc::BatchDetectArray(CString szPath, CString* szFileLi
 		lWidth = infoHeader->biWidth;
 
 		// 目标检测
-		circCount = 0;
-		countChange = FALSE;
 		startWidth = 0;
 		endWidth = 0;
 		startHeight = 0;
 		endHeight = 0;
-		// 准备检测第 1 个圆
-		if (circCount == 0)
+
+		for (int j = 0; j < lHeight; j++)
 		{
-			for (int j = 0; j < lHeight; j++)
+			for (int k = 0; k < lWidth; k++)
 			{
-				// 已检测到圆，退出循环
-				if (countChange)
-					break;
-				for (int k = 0; k < lWidth; k++)
+				// 检查 index 是否在已检测到的圆的范围内
+				bIndexPass = FALSE;
+				for (int l = 0; l < m_pCircle[i].m_lCircSum; l++)
 				{
-					// 检测到圆
-					if (lpBiData[j * lWidth + k] == 1)
+					if (j >= m_pCircle[i].m_pCircParam[l].m_nTop && j <= m_pCircle[i].m_pCircParam[l].m_nBottom && \
+						k >= m_pCircle[i].m_pCircParam[l].m_nLeft && k <= m_pCircle[i].m_pCircParam[l].m_nRight)
 					{
-						circCount++;
-						countChange = TRUE;
-						startHeight = j;
-						startWidth = k;
-						while (lpBiData[j * lWidth + k] && k < lWidth)
-							k++;
-						endWidth = k - 1;
-						// 纵向移动行切线，寻找 end 边缘
-						endHeight = j;
-						while (lpBiData[endHeight * lWidth + startWidth] == 1 || lpBiData[endHeight * lWidth + endWidth] == 1)
-							endHeight++;
-						for (int l = startWidth; l <= endWidth; l++)
-						{
-							if (lpBiData[endHeight * lWidth + l])
-								inCirc = TRUE;
-						}
-						if (!inCirc)
-							endHeight--;
-						// 获取第 1 个圆的数据
-						lCenterH = (startHeight + endHeight) / 2;
-						lCenterW = (startWidth + endWidth) / 2;
-						lRadius = (endHeight - startHeight + 1) / 2;
-						// 修正 startWidth
-						startWidth = lCenterW - lRadius;
-						while (lpBiData[lCenterH * lWidth + startWidth])
-							startWidth--;
-						while (!lpBiData[lCenterH * lWidth + startWidth])
-							startWidth++;
-						// 修正 endWidth
-						endWidth = lCenterW + lRadius;
-						while (lpBiData[lCenterH * lWidth + endWidth])
-							endWidth++;
-						while (!lpBiData[lCenterH * lWidth + endWidth])
-							endWidth--;
-						pCircle[2 * i + circCount - 1].m_lCenterH = lCenterH;
-						pCircle[2 * i + circCount - 1].m_lCenterW = lCenterW;
-						pCircle[2 * i + circCount - 1].m_lRadius = lRadius;
-						pCircle[2 * i + circCount - 1].m_nStartHeight = startHeight;
-						pCircle[2 * i + circCount - 1].m_nEndHeight = endHeight;
-						pCircle[2 * i + circCount - 1].m_nStartWidth = startWidth;
-						pCircle[2 * i + circCount - 1].m_nEndWidth = endWidth;
+						bIndexPass = TRUE;
 						break;
 					}
 				}
-			}
-		}
-		// 准备检测第 2 个圆
-		if (circCount == 1)
-		{
-			countChange = FALSE;
-			for (int j = 0; j < lHeight; j++)
-			{
-				// 已检测到圆，退出循环
-				if (countChange)
-					break;
-				for (int k = 0; k < lWidth; k++)
+				// index 在已检测到的圆的范围内时，跳过
+				if (bIndexPass)
+					continue;
+
+				// 检测到圆，且此圆的加入不会超过圆的存储容量
+				if ((lpBiData[j * lWidth + k] == 1) && (m_pCircle[i].m_lCircSum < m_pCircle[i].m_lListSize))
 				{
-					// index 在上一个圆的范围内时跳过
-					if (j >= startHeight && j <= endHeight && k >= startWidth && k <= endWidth)
+					startHeight = j;
+					// 位图中显然"切点"不一定为 1 个 pixel，找到"切点"的始末 pixel 坐标
+					startWidth = k;
+					endWidth = k;
+					while ((lpBiData[j * lWidth + endWidth] == 1) && (endWidth < lWidth))
+						endWidth++;
+					endWidth--;
+					// 纵向移动行切线，寻找另一个切点
+					endHeight = j;
+					while (lpBiData[endHeight * lWidth + startWidth] == 1 || lpBiData[endHeight * lWidth + endWidth] == 1)
+						endHeight++;
+					// 若该行在 [startWidth, endWidth] 区间内含有该圆的 pixel，endHeight 即为所求
+					for (int l = startWidth; l <= endWidth; l++)
 					{
-						continue;
+						if (lpBiData[endHeight * lWidth + l])
+							inCirc = TRUE;
 					}
-					// 检测到圆
-					if (lpBiData[j * lWidth + k] == 1)
-					{
-						circCount++;
-						countChange = TRUE;
-						startHeight = j;
-						startWidth = k;
-						while (lpBiData[j * lWidth + k] && k < lWidth)
-							k++;
-						endWidth = k - 1;
-						// 纵向移动行切线，寻找 end 边缘
-						endHeight = j;
-						while (lpBiData[endHeight * lWidth + startWidth] == 1 || lpBiData[endHeight * lWidth + endWidth] == 1)
-							endHeight++;
-						for (int l = startWidth; l <= endWidth; l++)
-						{
-							if (lpBiData[endHeight * lWidth + l])
-								inCirc = TRUE;
-						}
-						if (!inCirc)
-							endHeight--;
-						// 获取第 1 个圆的数据
-						lCenterH = (startHeight + endHeight) / 2;
-						lCenterW = (startWidth + endWidth) / 2;
-						lRadius = (endHeight - startHeight + 1) / 2;
-						// 修正 startWidth
-						startWidth = lCenterW - lRadius;
-						while (lpBiData[lCenterH * lWidth + startWidth])
-							startWidth--;
-						while (!lpBiData[lCenterH * lWidth + startWidth])
-							startWidth++;
-						// 修正 endWidth
-						endWidth = lCenterW + lRadius;
-						while (lpBiData[lCenterH * lWidth + endWidth])
-							endWidth++;
-						while (!lpBiData[lCenterH * lWidth + endWidth])
-							endWidth--;
-						pCircle[2 * i + circCount - 1].m_lCenterH = lCenterH;
-						pCircle[2 * i + circCount - 1].m_lCenterW = lCenterW;
-						pCircle[2 * i + circCount - 1].m_lRadius = lRadius;
-						pCircle[2 * i + circCount - 1].m_nStartHeight = startHeight;
-						pCircle[2 * i + circCount - 1].m_nEndHeight = endHeight;
-						pCircle[2 * i + circCount - 1].m_nStartWidth = startWidth;
-						pCircle[2 * i + circCount - 1].m_nEndWidth = endWidth;
-						break;
-					}
+					// 若该行在 [startWidth, endWidth] 区间内不含有该圆的 pixel，修正 endHeight
+					if (!inCirc)
+						endHeight--;
+
+					// 获取圆的数据
+					lCenterH = (startHeight + endHeight) / 2;
+					lCenterW = (startWidth + endWidth) / 2;
+					lRadius = (endHeight - startHeight + 1) / 2;
+					// 修正 startWidth 为圆的左边缘
+					startWidth = lCenterW - lRadius;
+					while (lpBiData[lCenterH * lWidth + startWidth])
+						startWidth--;
+					while (!lpBiData[lCenterH * lWidth + startWidth])
+						startWidth++;
+					// 修正 endWidth 为圆的右边缘
+					endWidth = lCenterW + lRadius;
+					while (lpBiData[lCenterH * lWidth + endWidth])
+						endWidth++;
+					while (!lpBiData[lCenterH * lWidth + endWidth])
+						endWidth--;
+					// 存入 m_pCircle[i].m_pCircParam[m_pCircle[i].m_lCircSum] 处的数据
+					// 注意，Bitmap 中图片数据从左下角开始，此数据还须做变换
+					// 此处为方便检查 index，暂不变换，在检测完全部圆后再统一变换
+					m_pCircle[i].m_pCircParam[m_pCircle[i].m_lCircSum].m_lCenterH = lCenterH;
+					m_pCircle[i].m_pCircParam[m_pCircle[i].m_lCircSum].m_lCenterW = lCenterW;
+					m_pCircle[i].m_pCircParam[m_pCircle[i].m_lCircSum].m_lRadius = lRadius;
+					m_pCircle[i].m_pCircParam[m_pCircle[i].m_lCircSum].m_nTop = startHeight;
+					m_pCircle[i].m_pCircParam[m_pCircle[i].m_lCircSum].m_nBottom = endHeight;
+					m_pCircle[i].m_pCircParam[m_pCircle[i].m_lCircSum].m_nLeft = startWidth;
+					m_pCircle[i].m_pCircParam[m_pCircle[i].m_lCircSum].m_nRight = endWidth;
+
+					m_pCircle[i].m_lCircSum++;
 				}
 			}
 		}
+
+		// 数据变换
+		// startHeight 为 Bitmap 数据中上切线所在行，对应 m_nBottom
+		// endHeight 为 Bitmap 数据中下切线所在行，对应 m_nTop
+		for (int j = 0; j < m_pCircle[i].m_lCircSum; j++)
+		{
+			lCenterH = m_pCircle[i].m_pCircParam[j].m_lCenterH;
+			startHeight = m_pCircle[i].m_pCircParam[j].m_nTop;
+			endHeight = m_pCircle[i].m_pCircParam[j].m_nBottom;
+			m_pCircle[i].m_pCircParam[j].m_lCenterH = lHeight - lCenterH - 1;
+			m_pCircle[i].m_pCircParam[j].m_nTop = lHeight - endHeight - 1;
+			m_pCircle[i].m_pCircParam[j].m_nBottom = lHeight - startHeight - 1;
+		}
+
 		// 释放内存
 		delete fileHeader;
 		delete[] pbDib;
 	}
-
-	return pCircle;
 }
