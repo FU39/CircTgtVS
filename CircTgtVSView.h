@@ -5,6 +5,8 @@
 #pragma once
 
 #include "DlgFileList.h"
+#include "DlgFileBat.h"
+#include "DlgError.h"
 #include "Circle4Array.h"
 
 
@@ -22,12 +24,14 @@ public:
 	int m_nFileSum;					// 目录下文件总数
 	int m_nIndex;
 	long m_lWidth, m_lHeight;
-	CDlgFileList* m_pDlgFileList;	// 目录选择对话框指针
+	CDlgFileList* m_pDlgFileList;	// 目录选择对话框
+	CDlgFileBat* m_pDlgFileBat;		// 批量处理结果对话框
 
 // 操作
 public:
-	BOOL m_bShowInfo;			// 执行 show info 标志位
-	void DrawArrow(CDC* pDC, CPoint start, CPoint end);		// 画箭头函数
+	BOOL m_bShowInfo;				// 执行 show info 标志位
+	BOOL m_bFileBat;				// 批量处理完成标志位
+	void DrawArrow(CDC* pDC, CPoint tail, CPoint head);		// 绘制箭头函数
 
 // 重写
 public:

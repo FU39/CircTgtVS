@@ -41,10 +41,17 @@ CCircTgtVSDoc::CCircTgtVSDoc() noexcept
 	m_nTotalColors = 0;
 	m_lpData = nullptr;
 	m_pCircle = nullptr;
+	m_lShowW = 0;
+	m_lShowH = 0;
 }
 
 CCircTgtVSDoc::~CCircTgtVSDoc()
 {
+	if (m_pCircle != nullptr)
+	{
+		delete[] m_pCircle;
+		m_pCircle = nullptr;
+	}
 }
 
 BOOL CCircTgtVSDoc::OnNewDocument()
@@ -61,6 +68,11 @@ BOOL CCircTgtVSDoc::OnNewDocument()
 	m_lpRGBQuad = nullptr;
 	m_nTotalColors = 0;
 	m_lpData = nullptr;
+	if (m_pCircle != nullptr)
+	{
+		delete[] m_pCircle;
+		m_pCircle = nullptr;
+	}
 	m_pCircle = nullptr;
 
 	return TRUE;
@@ -158,20 +170,43 @@ void CCircTgtVSDoc::Dump(CDumpContext& dc) const
 void CCircTgtVSDoc::OpenFile(CString szFileName)
 {
 	CFile file;
+	CFileException fileException;
 	LPBITMAPFILEHEADER lpFileHeader = nullptr;
 	BYTE* pbDib = nullptr;
 	long lResult, lBmpWidthBytes, lSize;
+	int nNameIndex = 0;			// CString 内索引
 
-	m_bOpen = file.Open(szFileName, CFile::modeRead);	// 读模式打开文件
+	// 检查文件是否为 ".bmp" 格式
+	nNameIndex = szFileName.Find(_T(".bmp"));
+	if (nNameIndex == -1)
+	{
+		m_bOpen = FALSE;
+		return;
+	}
+
+	m_bOpen = file.Open(szFileName, CFile::modeRead, &fileException);	// 读模式打开文件
+	// 打开失败
+	if (!m_bOpen)
+	{
+		TRACE(_T("Can't open file %s, error = %u\n"), szFileName, fileException.m_cause);
+		return;
+	}
 	try
 	{
 		// 读入位图文件头信息
 		lpFileHeader = new BITMAPFILEHEADER;
 		lResult = file.Read(lpFileHeader, sizeof(BITMAPFILEHEADER));
+		if (lResult != sizeof(BITMAPFILEHEADER))
+		{
+			file.Close();
+			m_bOpen = FALSE;
+			return;
+		}
 	}
 	catch (CFileException* e)
 	{
 		// 对 e 的错误类型进行判断，分别处理。e->GetErrorMessage
+		e->ReportError();
 		e->Delete();
 	}
 
@@ -181,19 +216,32 @@ void CCircTgtVSDoc::OpenFile(CString szFileName)
 	lSize = (long)file.GetLength() - sizeof(BITMAPFILEHEADER);
 	// 为 DIB 分配全局内存
 	if (m_hDIB != nullptr)
-		GlobalFree(m_hDIB);
+		::GlobalFree(m_hDIB);
 	m_hDIB = (HGLOBAL)::GlobalAlloc(GMEM_MOVEABLE | GMEM_ZEROINIT, lSize);
+	if (m_hDIB == nullptr)
+	{
+		file.Close();
+		m_bOpen = FALSE;
+		return;
+	}
 
 	// 指向 DIB 实际像素数据的指针
+	// 锁定物理内存
 	pbDib = (BYTE*)::GlobalLock(m_hDIB);
 	try
 	{	
-		// 锁定物理内存
 		lResult = file.Read((void*)pbDib, lSize);
+		if (lResult != lSize)
+		{
+			file.Close();
+			m_bOpen = FALSE;
+			return;
+		}
 		file.Close();
 	}
 	catch (CFileException* e)
 	{
+		e->ReportError();
 		e->Delete();
 	}
 	// 获取位图文件数据信息指针和位图信息头指针
@@ -223,13 +271,17 @@ void CCircTgtVSDoc::OpenFile(CString szFileName)
 	// 位图的大小(面积像素单位)
 	::GlobalUnlock(m_hDIB);
 
-
 	lBmpWidthBytes = WIDTHBYTES(m_lpInfoHeader->biWidth * m_lpInfoHeader->biBitCount);
 	m_lpInfoHeader->biSizeImage = lBmpWidthBytes * m_lpInfoHeader->biHeight;
 
 	AfxGetApp()->EndWaitCursor();
-	// 由于未重载 CView 的 OnUpdate 成员函数，故调用 CView 的 OnUpdate 函数
-	// 其中，已调用 Invalidate(TRUE); 故 OnDlgSelFile 中无需再调用之，即可重绘视图
+	/**
+	* UpdateAllViews 调用 OnUpdate
+	* 
+	* 若未重载 CView 的 OnUpdate 成员函数，则调用 CView 的 OnUpdate 函数
+	* 其中，已调用 Invalidate(TRUE); 故 OnDlgSelFile 中无需再调用之，即可重绘视图
+	* 若已重载 OnUpdate，则在重载中须调用 Invalidate，否则在 OnDlgSelFile 中须调用 Invalidate
+	*/
 	UpdateAllViews(NULL);
 
 	delete lpFileHeader;
@@ -245,6 +297,7 @@ void CCircTgtVSDoc::OpenFile(CString szFileName)
 void CCircTgtVSDoc::Image2BlackWhite()
 {
 	CFile srcFile, desFile;
+	CFileException fileException;
 	CString srcFileName, desFileName;
 	LPBITMAPFILEHEADER fileHeader = nullptr;
 	BYTE* pbDib = nullptr;
@@ -259,14 +312,41 @@ void CCircTgtVSDoc::Image2BlackWhite()
 	BOOL isSuccess = FALSE;
 	int pixelValue = 0;
 	int k = 0;
+	int nNameIndex = 0;			// CString 内索引
 
 	srcFileName = _T("F:\\0_coding\\TestFiles\\MOBJ0.bmp");
-	isSuccess = srcFile.Open(srcFileName, CFile::modeRead);	// 读模式打开文件
+	// 检查文件是否为 ".bmp" 格式
+	nNameIndex = srcFileName.Find(_T(".bmp"));
+	if (nNameIndex == -1)
+	{
+		return;
+	}
+	isSuccess = srcFile.Open(srcFileName, CFile::modeRead, &fileException);	// 读模式打开文件
+	if (!isSuccess)
+	{
+		TRACE(_T("Can't open file %s, error = %u\n"), srcFileName, fileException.m_cause);
+		return;
+	}
 	fileHeader = new BITMAPFILEHEADER;
 	lResult = srcFile.Read(fileHeader, sizeof(BITMAPFILEHEADER));
+	if (lResult != sizeof(BITMAPFILEHEADER))
+	{
+		srcFile.Close();
+		return;
+	}
 	lSize = (long)srcFile.GetLength() - sizeof(BITMAPFILEHEADER);
 	pbDib = new BYTE[lSize];
+	if (pbDib == nullptr)
+	{
+		srcFile.Close();
+		return;
+	}
 	lResult = srcFile.Read(pbDib, lSize);
+	if (lResult != lSize)
+	{
+		srcFile.Close();
+		return;
+	}
 	srcFile.Close();
 	infoHeader = (LPBITMAPINFOHEADER)pbDib;
 	// 颜色数
@@ -296,7 +376,12 @@ void CCircTgtVSDoc::Image2BlackWhite()
 
 	isSuccess = FALSE;
 	desFileName = _T("F:\\0_coding\\MFCProjects\\测试文件\\0.bmp");
-	isSuccess = desFile.Open(desFileName, CFile::modeWrite);		// 写模式打开文件
+	isSuccess = desFile.Open(desFileName, CFile::modeWrite, &fileException);		// 写模式打开文件
+	if (!isSuccess)
+	{
+		TRACE(_T("Can't open file %s, error = %u\n"), desFileName, fileException.m_cause);
+		return;
+	}
 
 	// 修改信息头
 	// 信息头共有 11 部分，灰度化时需要修改 4 部分
@@ -344,15 +429,15 @@ void CCircTgtVSDoc::Image2BlackWhite()
 	desFile.Close();
 
 	delete fileHeader;
-	delete[] pbDib;
-	delete[] ipRGB;
-	delete[] desData;
 	fileHeader = nullptr;
+	delete[] pbDib;
 	pbDib = nullptr;
 	infoHeader = nullptr;
 	lpRGBQuad = nullptr;
 	sourceData = nullptr;
+	delete[] ipRGB;
 	ipRGB = nullptr;
+	delete[] desData;
 	desData = nullptr;
 }
 
@@ -363,6 +448,9 @@ void CCircTgtVSDoc::Image2BlackWhite()
 */
 BYTE* CCircTgtVSDoc::RGB2TwoValue(BYTE* pbDib)
 {
+	// 入参检查
+	if (pbDib == nullptr)
+		return nullptr;
 	LPBITMAPINFOHEADER infoHeader = nullptr;
 	RGBQUAD* lpRGBQuad = nullptr;
 	BYTE* lpData = nullptr;				// 图像数据
@@ -440,14 +528,19 @@ BYTE* CCircTgtVSDoc::RGB2TwoValue(BYTE* pbDib)
 * 也可以使用 opencv 实现目标检测，detect-from-array branch 未使用，计划在 detect-by-opencv branch 中实现.
 * 本检测方法以方块作为圆检测边缘，故若多个圆的方块边缘有重叠时无法检测，有一定局限性.
 */
-void CCircTgtVSDoc::BatchDetectArray(CString szPath, CString* szFileList, int nFileSum)
+BOOL CCircTgtVSDoc::BatchDetectArray(CString szPath, CString* szFileList, int nFileSum)
 {
+	// 入参检查
+	if (szFileList == nullptr)
+		return FALSE;
+
 	CString szFileName;
 	CFile file;
+	CFileException fileException;
 	LPBITMAPFILEHEADER fileHeader = nullptr;
 	BYTE* pbDib = nullptr;
 	LPBITMAPINFOHEADER infoHeader = nullptr;
-	long lResult, lSize, lHeight, lWidth;
+	long lResult, lSize;
 	UINT nTotalColors = 0;
 	DWORD dwColorTableSize = 0;
 	BOOL isSuccess = FALSE;
@@ -457,6 +550,7 @@ void CCircTgtVSDoc::BatchDetectArray(CString szPath, CString* szFileList, int nF
 	BOOL bIndexPass = FALSE;		// 判断 index 是否要跳过
 	BOOL inCirc = FALSE;			// 判断索引的 pixel 是否仍在圆内
 	long lCenterH, lCenterW, lRadius;
+	int nNameIndex = 0;				// CString 内索引
 
 	// 根据文件数量为 m_pCircle 分配空间
 	if (m_pCircle != nullptr)
@@ -470,12 +564,48 @@ void CCircTgtVSDoc::BatchDetectArray(CString szPath, CString* szFileList, int nF
 	for (int i = 0; i < nFileSum; i++)
 	{
 		szFileName = szPath + "\\" + szFileList[i];
+		// 检查文件是否为 ".bmp" 格式
+		nNameIndex = szFileName.Find(_T(".bmp"));
+		if (nNameIndex == -1)
+		{
+			delete[] m_pCircle;
+			m_pCircle = nullptr;
+			return FALSE;
+		}
 		isSuccess = file.Open(szFileName, CFile::modeRead);		// 读模式打开文件
+		if (!isSuccess)
+		{
+			TRACE(_T("Can't open file %s, error = %u\n"), szFileName, fileException.m_cause);
+			delete[] m_pCircle;
+			m_pCircle = nullptr;
+			return FALSE;
+		}
 		fileHeader = new BITMAPFILEHEADER;
 		lResult = file.Read(fileHeader, sizeof(BITMAPFILEHEADER));
+		if (lResult != sizeof(BITMAPFILEHEADER))
+		{
+			file.Close();
+			delete[] m_pCircle;
+			m_pCircle = nullptr;
+			return FALSE;
+		}
 		lSize = (long)file.GetLength() - sizeof(BITMAPFILEHEADER);
 		pbDib = new BYTE[lSize];
+		if (pbDib == nullptr)
+		{
+			file.Close();
+			delete[] m_pCircle;
+			m_pCircle = nullptr;
+			return FALSE;
+		}
 		lResult = file.Read(pbDib, lSize);
+		if (lResult != lSize)
+		{
+			file.Close();
+			delete[] m_pCircle;
+			m_pCircle = nullptr;
+			return FALSE;
+		}
 		file.Close();
 
 		// 定义 m_pCircle[i] 对应的文件
@@ -484,9 +614,20 @@ void CCircTgtVSDoc::BatchDetectArray(CString szPath, CString* szFileList, int nF
 		// 获取图像二值化数据，注意 BMP 中行数据为倒序
 		// 二值化数据中 0: 白色，1: 黑色
 		lpBiData = RGB2TwoValue(pbDib);
+		// 传入空指针，停止执行
+		if (lpBiData == nullptr)
+		{
+			m_lShowH = 0;
+			m_lShowW = 0;
+			delete[] m_pCircle;
+			m_pCircle = nullptr;
+			return FALSE;
+		}
 		infoHeader = (LPBITMAPINFOHEADER)pbDib;
-		lHeight = infoHeader->biHeight;
-		lWidth = infoHeader->biWidth;
+		// 用于确定绘制目标信息时的绘图区域
+		m_lpInfoHeader = infoHeader;
+		m_lShowH = infoHeader->biHeight;
+		m_lShowW = infoHeader->biWidth;
 
 		// 目标检测
 		startWidth = 0;
@@ -494,9 +635,9 @@ void CCircTgtVSDoc::BatchDetectArray(CString szPath, CString* szFileList, int nF
 		startHeight = 0;
 		endHeight = 0;
 
-		for (int j = 0; j < lHeight; j++)
+		for (int j = 0; j < m_lShowH; j++)
 		{
-			for (int k = 0; k < lWidth; k++)
+			for (int k = 0; k < m_lShowW; k++)
 			{
 				// 检查 index 是否在已检测到的圆的范围内
 				bIndexPass = FALSE;
@@ -514,23 +655,23 @@ void CCircTgtVSDoc::BatchDetectArray(CString szPath, CString* szFileList, int nF
 					continue;
 
 				// 检测到圆，且此圆的加入不会超过圆的存储容量
-				if ((lpBiData[j * lWidth + k] == 1) && (m_pCircle[i].m_lCircSum < m_pCircle[i].m_lListSize))
+				if ((lpBiData[j * m_lShowW + k] == 1) && (m_pCircle[i].m_lCircSum < m_pCircle[i].m_lListSize))
 				{
 					startHeight = j;
 					// 位图中显然"切点"不一定为 1 个 pixel，找到"切点"的始末 pixel 坐标
 					startWidth = k;
 					endWidth = k;
-					while ((lpBiData[j * lWidth + endWidth] == 1) && (endWidth < lWidth))
+					while ((lpBiData[j * m_lShowW + endWidth] == 1) && (endWidth < m_lShowW))
 						endWidth++;
 					endWidth--;
 					// 纵向移动行切线，寻找另一个切点
 					endHeight = j;
-					while (lpBiData[endHeight * lWidth + startWidth] == 1 || lpBiData[endHeight * lWidth + endWidth] == 1)
+					while (lpBiData[endHeight * m_lShowW + startWidth] == 1 || lpBiData[endHeight * m_lShowW + endWidth] == 1)
 						endHeight++;
 					// 若该行在 [startWidth, endWidth] 区间内含有该圆的 pixel，endHeight 即为所求
 					for (int l = startWidth; l <= endWidth; l++)
 					{
-						if (lpBiData[endHeight * lWidth + l])
+						if (lpBiData[endHeight * m_lShowW + l])
 							inCirc = TRUE;
 					}
 					// 若该行在 [startWidth, endWidth] 区间内不含有该圆的 pixel，修正 endHeight
@@ -543,15 +684,15 @@ void CCircTgtVSDoc::BatchDetectArray(CString szPath, CString* szFileList, int nF
 					lRadius = (endHeight - startHeight + 1) / 2;
 					// 修正 startWidth 为圆的左边缘
 					startWidth = lCenterW - lRadius;
-					while (lpBiData[lCenterH * lWidth + startWidth])
+					while (lpBiData[lCenterH * m_lShowW + startWidth])
 						startWidth--;
-					while (!lpBiData[lCenterH * lWidth + startWidth])
+					while (!lpBiData[lCenterH * m_lShowW + startWidth])
 						startWidth++;
 					// 修正 endWidth 为圆的右边缘
 					endWidth = lCenterW + lRadius;
-					while (lpBiData[lCenterH * lWidth + endWidth])
+					while (lpBiData[lCenterH * m_lShowW + endWidth])
 						endWidth++;
-					while (!lpBiData[lCenterH * lWidth + endWidth])
+					while (!lpBiData[lCenterH * m_lShowW + endWidth])
 						endWidth--;
 					// 存入 m_pCircle[i].m_pCircParam[m_pCircle[i].m_lCircSum] 处的数据
 					// 注意，Bitmap 中图片数据从左下角开始，此数据还须做变换
@@ -577,13 +718,16 @@ void CCircTgtVSDoc::BatchDetectArray(CString szPath, CString* szFileList, int nF
 			lCenterH = m_pCircle[i].m_pCircParam[j].m_lCenterH;
 			startHeight = m_pCircle[i].m_pCircParam[j].m_nTop;
 			endHeight = m_pCircle[i].m_pCircParam[j].m_nBottom;
-			m_pCircle[i].m_pCircParam[j].m_lCenterH = lHeight - lCenterH - 1;
-			m_pCircle[i].m_pCircParam[j].m_nTop = lHeight - endHeight - 1;
-			m_pCircle[i].m_pCircParam[j].m_nBottom = lHeight - startHeight - 1;
+			m_pCircle[i].m_pCircParam[j].m_lCenterH = m_lShowH - lCenterH - 1;
+			m_pCircle[i].m_pCircParam[j].m_nTop = m_lShowH - endHeight - 1;
+			m_pCircle[i].m_pCircParam[j].m_nBottom = m_lShowH - startHeight - 1;
 		}
 
 		// 释放内存
 		delete fileHeader;
+		fileHeader = nullptr;
 		delete[] pbDib;
+		pbDib = nullptr;
 	}
+	return TRUE;
 }

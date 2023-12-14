@@ -19,7 +19,7 @@ public:
 
 // 操作
 public:
-	BOOL m_bOpen;							// 图像文件在对话框中选中后是否被打开
+	BOOL m_bOpen;							// 图像文件在"目录文件"对话框中选中后是否被打开
 	HGLOBAL m_hDIB;
 	LPBITMAPINFO m_lpInfo;					// 图像 InfoHeader+index 内存起始地址
 	LPBITMAPINFOHEADER m_lpInfoHeader;		// 图像 InfohHeader 内存起始地址
@@ -27,6 +27,7 @@ public:
 	UINT m_nTotalColors;					// 图像的色深度,单位 bits
 	BYTE* m_lpData;							// 图像 data 内存起始地址
 	CCircle4Array* m_pCircle;				// 圆目标数据列
+	long m_lShowW, m_lShowH;				// 显示目标信息的区域
 
 // 重写
 public:
@@ -43,7 +44,7 @@ public:
 	void OpenFile(CString szFileName);
 	void Image2BlackWhite();
 	BYTE* RGB2TwoValue(BYTE* pbDib);
-	void BatchDetectArray(CString szPath, CString* szFileList, int nFileSum);
+	BOOL BatchDetectArray(CString szPath, CString* szFileList, int nFileSum);
 #ifdef _DEBUG
 	virtual void AssertValid() const;
 	virtual void Dump(CDumpContext& dc) const;

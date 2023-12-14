@@ -187,6 +187,8 @@
     <ClInclude Include="CircTgtVS.h" />
     <ClInclude Include="CircTgtVSDoc.h" />
     <ClInclude Include="CircTgtVSView.h" />
+    <ClInclude Include="DlgError.h" />
+    <ClInclude Include="DlgFileBat.h" />
     <ClInclude Include="DlgFileList.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="MainFrm.h" />
@@ -199,6 +201,8 @@
     <ClCompile Include="CircTgtVS.cpp" />
     <ClCompile Include="CircTgtVSDoc.cpp" />
     <ClCompile Include="CircTgtVSView.cpp" />
+    <ClCompile Include="DlgError.cpp" />
+    <ClCompile Include="DlgFileBat.cpp" />
     <ClCompile Include="DlgFileList.cpp" />
     <ClCompile Include="MainFrm.cpp" />
     <ClCompile Include="pch.cpp">
@@ -212,6 +216,7 @@
     <ResourceCompile Include="CircTgtVS.rc" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="cpp.hint" />
     <None Include="res\CircTgtVS.rc2" />
   </ItemGroup>
   <ItemGroup>

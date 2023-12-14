@@ -15,7 +15,7 @@ CDlgFileList::CDlgFileList(CWnd* pParent /*=nullptr*/)
 	: CDialogEx(IDD_DIALOG_FILELIST, pParent)
 {
 	m_hView = nullptr;
-	m_fileList = nullptr;
+	m_pFileList = nullptr;
 	m_listLen = 0;
 }
 
@@ -45,7 +45,7 @@ BOOL CDlgFileList::OnInitDialog()
 	// TODO:  在此添加额外的初始化
 	for (int i = 0; i < m_listLen; i++)
 	{
-		m_lstFileList.InsertString(i, m_fileList[i]);
+		m_lstFileList.InsertString(i, m_pFileList[i]);
 	}
 
 	return TRUE;  // return TRUE unless you set the focus to a control
