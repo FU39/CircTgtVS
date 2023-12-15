@@ -149,8 +149,6 @@ void CCircTgtVSView::OnDraw(CDC* pDC)
 			{
 				szName = szName.Left(nNameIndex);
 			}
-			// 用于判断是否为多目标文件
-			nNameIndex = szName.Find(_T("MOBJ"));
 
 			// 使用透明画刷画圆
 			logBrush.lbStyle = BS_HOLLOW;
