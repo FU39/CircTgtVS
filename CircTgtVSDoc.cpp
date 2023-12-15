@@ -534,7 +534,9 @@ BOOL CCircTgtVSDoc::BatchDetectArray(CString szPath, CString* szFileList, int nF
 	if (szFileList == nullptr)
 		return FALSE;
 
+
 	CString szFileName, szName;
+
 	CFile file;
 	CFileException fileException;
 	LPBITMAPFILEHEADER fileHeader = nullptr;
@@ -571,6 +573,7 @@ BOOL CCircTgtVSDoc::BatchDetectArray(CString szPath, CString* szFileList, int nF
 			delete[] m_pCircle;
 			m_pCircle = nullptr;
 			break;
+
 		}
 		isSuccess = file.Open(szFileName, CFile::modeRead);		// 读模式打开文件
 		if (!isSuccess)
@@ -607,6 +610,7 @@ BOOL CCircTgtVSDoc::BatchDetectArray(CString szPath, CString* szFileList, int nF
 			return FALSE;
 		}
 		file.Close();
+
 
 		// 定义 m_pCircle[nNameIndex] 对应序号为 nNameIndex 的文件
 		for (int j = 0; j < nFileSum; j++)
