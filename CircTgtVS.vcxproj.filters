@@ -42,6 +42,15 @@
     <ClInclude Include="DlgFileList.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="Circle4Array.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="DlgError.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="DlgFileBat.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="CircTgtVS.cpp">
@@ -62,6 +71,15 @@
     <ClCompile Include="DlgFileList.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="Circle4Array.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="DlgError.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="DlgFileBat.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="CircTgtVS.rc">
@@ -72,6 +90,7 @@
     <None Include="res\CircTgtVS.rc2">
       <Filter>资源文件</Filter>
     </None>
+    <None Include="cpp.hint" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="res\CircTgtVSDoc.ico">
