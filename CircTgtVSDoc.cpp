@@ -534,7 +534,7 @@ BOOL CCircTgtVSDoc::BatchDetectArray(CString szPath, CString* szFileList, int nF
 	if (szFileList == nullptr)
 		return FALSE;
 
-	CString szFileName;
+	CString szFileName, szName;
 	CFile file;
 	CFileException fileException;
 	LPBITMAPFILEHEADER fileHeader = nullptr;
@@ -570,7 +570,7 @@ BOOL CCircTgtVSDoc::BatchDetectArray(CString szPath, CString* szFileList, int nF
 		{
 			delete[] m_pCircle;
 			m_pCircle = nullptr;
-			return FALSE;
+			break;
 		}
 		isSuccess = file.Open(szFileName, CFile::modeRead);		// 读模式打开文件
 		if (!isSuccess)
@@ -608,8 +608,35 @@ BOOL CCircTgtVSDoc::BatchDetectArray(CString szPath, CString* szFileList, int nF
 		}
 		file.Close();
 
-		// 定义 m_pCircle[i] 对应的文件
-		m_pCircle[i].m_sz4WhichFile = szFileName;
+		// 定义 m_pCircle[nNameIndex] 对应序号为 nNameIndex 的文件
+		for (int j = 0; j < nFileSum; j++)
+		{
+			szName = szFileName;
+			nNameIndex = szName.Find('\\');
+			while (nNameIndex != -1)
+			{
+				szName = szName.Mid(nNameIndex + 1);
+				nNameIndex = szName.Find('\\');
+			}
+			nNameIndex = szName.ReverseFind('.');
+			if (nNameIndex != -1)
+			{
+				szName = szName.Left(nNameIndex);
+			}
+			nNameIndex = szName.Find(TCHAR(48 + j));
+			// 文件名有编号
+			if (nNameIndex != -1)
+			{
+				m_pCircle[j].m_sz4WhichFile = szFileName;
+				nNameIndex = j;
+			}
+		}
+		// 文件名无编号，按顺序存
+		if (nNameIndex == -1)
+		{
+			m_pCircle[i].m_sz4WhichFile = szFileName;
+			nNameIndex = i;
+		}
 
 		// 获取图像二值化数据，注意 BMP 中行数据为倒序
 		// 二值化数据中 0: 白色，1: 黑色
@@ -641,10 +668,10 @@ BOOL CCircTgtVSDoc::BatchDetectArray(CString szPath, CString* szFileList, int nF
 			{
 				// 检查 index 是否在已检测到的圆的范围内
 				bIndexPass = FALSE;
-				for (int l = 0; l < m_pCircle[i].m_lCircSum; l++)
+				for (int l = 0; l < m_pCircle[nNameIndex].m_lCircSum; l++)
 				{
-					if (j >= m_pCircle[i].m_pCircParam[l].m_nTop && j <= m_pCircle[i].m_pCircParam[l].m_nBottom && \
-						k >= m_pCircle[i].m_pCircParam[l].m_nLeft && k <= m_pCircle[i].m_pCircParam[l].m_nRight)
+					if (j >= m_pCircle[nNameIndex].m_pCircParam[l].m_nTop && j <= m_pCircle[nNameIndex].m_pCircParam[l].m_nBottom && \
+						k >= m_pCircle[nNameIndex].m_pCircParam[l].m_nLeft && k <= m_pCircle[nNameIndex].m_pCircParam[l].m_nRight)
 					{
 						bIndexPass = TRUE;
 						break;
@@ -655,7 +682,7 @@ BOOL CCircTgtVSDoc::BatchDetectArray(CString szPath, CString* szFileList, int nF
 					continue;
 
 				// 检测到圆，且此圆的加入不会超过圆的存储容量
-				if ((lpBiData[j * m_lShowW + k] == 1) && (m_pCircle[i].m_lCircSum < m_pCircle[i].m_lListSize))
+				if ((lpBiData[j * m_lShowW + k] == 1) && (m_pCircle[nNameIndex].m_lCircSum < m_pCircle[nNameIndex].m_lListSize))
 				{
 					startHeight = j;
 					// 位图中显然"切点"不一定为 1 个 pixel，找到"切点"的始末 pixel 坐标
@@ -694,18 +721,18 @@ BOOL CCircTgtVSDoc::BatchDetectArray(CString szPath, CString* szFileList, int nF
 						endWidth++;
 					while (!lpBiData[lCenterH * m_lShowW + endWidth])
 						endWidth--;
-					// 存入 m_pCircle[i].m_pCircParam[m_pCircle[i].m_lCircSum] 处的数据
+					// 存入 m_pCircle[nNameIndex].m_pCircParam[m_pCircle[nNameIndex].m_lCircSum] 处的数据
 					// 注意，Bitmap 中图片数据从左下角开始，此数据还须做变换
 					// 此处为方便检查 index，暂不变换，在检测完全部圆后再统一变换
-					m_pCircle[i].m_pCircParam[m_pCircle[i].m_lCircSum].m_lCenterH = lCenterH;
-					m_pCircle[i].m_pCircParam[m_pCircle[i].m_lCircSum].m_lCenterW = lCenterW;
-					m_pCircle[i].m_pCircParam[m_pCircle[i].m_lCircSum].m_lRadius = lRadius;
-					m_pCircle[i].m_pCircParam[m_pCircle[i].m_lCircSum].m_nTop = startHeight;
-					m_pCircle[i].m_pCircParam[m_pCircle[i].m_lCircSum].m_nBottom = endHeight;
-					m_pCircle[i].m_pCircParam[m_pCircle[i].m_lCircSum].m_nLeft = startWidth;
-					m_pCircle[i].m_pCircParam[m_pCircle[i].m_lCircSum].m_nRight = endWidth;
+					m_pCircle[nNameIndex].m_pCircParam[m_pCircle[nNameIndex].m_lCircSum].m_lCenterH = lCenterH;
+					m_pCircle[nNameIndex].m_pCircParam[m_pCircle[nNameIndex].m_lCircSum].m_lCenterW = lCenterW;
+					m_pCircle[nNameIndex].m_pCircParam[m_pCircle[nNameIndex].m_lCircSum].m_lRadius = lRadius;
+					m_pCircle[nNameIndex].m_pCircParam[m_pCircle[nNameIndex].m_lCircSum].m_nTop = startHeight;
+					m_pCircle[nNameIndex].m_pCircParam[m_pCircle[nNameIndex].m_lCircSum].m_nBottom = endHeight;
+					m_pCircle[nNameIndex].m_pCircParam[m_pCircle[nNameIndex].m_lCircSum].m_nLeft = startWidth;
+					m_pCircle[nNameIndex].m_pCircParam[m_pCircle[nNameIndex].m_lCircSum].m_nRight = endWidth;
 
-					m_pCircle[i].m_lCircSum++;
+					m_pCircle[nNameIndex].m_lCircSum++;
 				}
 			}
 		}
@@ -713,14 +740,14 @@ BOOL CCircTgtVSDoc::BatchDetectArray(CString szPath, CString* szFileList, int nF
 		// 数据变换
 		// startHeight 为 Bitmap 数据中上切线所在行，对应 m_nBottom
 		// endHeight 为 Bitmap 数据中下切线所在行，对应 m_nTop
-		for (int j = 0; j < m_pCircle[i].m_lCircSum; j++)
+		for (int j = 0; j < m_pCircle[nNameIndex].m_lCircSum; j++)
 		{
-			lCenterH = m_pCircle[i].m_pCircParam[j].m_lCenterH;
-			startHeight = m_pCircle[i].m_pCircParam[j].m_nTop;
-			endHeight = m_pCircle[i].m_pCircParam[j].m_nBottom;
-			m_pCircle[i].m_pCircParam[j].m_lCenterH = m_lShowH - lCenterH - 1;
-			m_pCircle[i].m_pCircParam[j].m_nTop = m_lShowH - endHeight - 1;
-			m_pCircle[i].m_pCircParam[j].m_nBottom = m_lShowH - startHeight - 1;
+			lCenterH = m_pCircle[nNameIndex].m_pCircParam[j].m_lCenterH;
+			startHeight = m_pCircle[nNameIndex].m_pCircParam[j].m_nTop;
+			endHeight = m_pCircle[nNameIndex].m_pCircParam[j].m_nBottom;
+			m_pCircle[nNameIndex].m_pCircParam[j].m_lCenterH = m_lShowH - lCenterH - 1;
+			m_pCircle[nNameIndex].m_pCircParam[j].m_nTop = m_lShowH - endHeight - 1;
+			m_pCircle[nNameIndex].m_pCircParam[j].m_nBottom = m_lShowH - startHeight - 1;
 		}
 
 		// 释放内存
