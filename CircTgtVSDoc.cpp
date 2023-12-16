@@ -543,7 +543,7 @@ BOOL CCircTgtVSDoc::BatchDetectArray(CString szPath, CString* szFileList, int nF
 	long lResult, lSize;
 	UINT nTotalColors = 0;
 	DWORD dwColorTableSize = 0;
-	BOOL isSuccess = FALSE;
+	BOOL isOpen = FALSE;			// 判断是否成功打开文件
 	int pixelValue = 0;
 	BYTE* lpBiData = nullptr;		// 图像二值化数据
 	int startWidth, endWidth, startHeight, endHeight;
@@ -551,6 +551,7 @@ BOOL CCircTgtVSDoc::BatchDetectArray(CString szPath, CString* szFileList, int nF
 	BOOL inCirc = FALSE;			// 判断索引的 pixel 是否仍在圆内
 	long lCenterH, lCenterW, lRadius;
 	int nNameIndex = 0;				// CString 内索引
+	BOOL isDetected = FALSE;		// 判断是否检测到过目标
 
 	// 根据文件数量为 m_pCircle 分配空间
 	if (m_pCircle != nullptr)
@@ -567,13 +568,9 @@ BOOL CCircTgtVSDoc::BatchDetectArray(CString szPath, CString* szFileList, int nF
 		// 检查文件是否为 ".bmp" 格式
 		nNameIndex = szFileName.Find(_T(".bmp"));
 		if (nNameIndex == -1)
-		{
-			delete[] m_pCircle;
-			m_pCircle = nullptr;
 			break;
-		}
-		isSuccess = file.Open(szFileName, CFile::modeRead);		// 读模式打开文件
-		if (!isSuccess)
+		isOpen = file.Open(szFileName, CFile::modeRead);		// 读模式打开文件
+		if (!isOpen)
 		{
 			TRACE(_T("Can't open file %s, error = %u\n"), szFileName, fileException.m_cause);
 			delete[] m_pCircle;
@@ -623,12 +620,13 @@ BOOL CCircTgtVSDoc::BatchDetectArray(CString szPath, CString* szFileList, int nF
 			{
 				szName = szName.Left(nNameIndex);
 			}
-			nNameIndex = szName.Find(TCHAR(48 + j));
+			nNameIndex = szName.Find(TCHAR(48 + j));	// j 对应的 ASCII 值
 			// 文件名有编号
 			if (nNameIndex != -1)
 			{
 				m_pCircle[j].m_sz4WhichFile = szFileName;
 				nNameIndex = j;
+				break;
 			}
 		}
 		// 文件名无编号，按顺序存
@@ -684,6 +682,7 @@ BOOL CCircTgtVSDoc::BatchDetectArray(CString szPath, CString* szFileList, int nF
 				// 检测到圆，且此圆的加入不会超过圆的存储容量
 				if ((lpBiData[j * m_lShowW + k] == 1) && (m_pCircle[nNameIndex].m_lCircSum < m_pCircle[nNameIndex].m_lListSize))
 				{
+					isDetected = TRUE;
 					startHeight = j;
 					// 位图中显然"切点"不一定为 1 个 pixel，找到"切点"的始末 pixel 坐标
 					startWidth = k;
@@ -755,6 +754,14 @@ BOOL CCircTgtVSDoc::BatchDetectArray(CString szPath, CString* szFileList, int nF
 		fileHeader = nullptr;
 		delete[] pbDib;
 		pbDib = nullptr;
+	}
+
+	// 虽然遍历完了所有文件，但没有检测到过目标，认为失败
+	if (!isDetected)
+	{
+		delete[] m_pCircle;
+		m_pCircle = nullptr;
+		return FALSE;
 	}
 	return TRUE;
 }
