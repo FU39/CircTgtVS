@@ -7,7 +7,6 @@
 #include "DlgFileList.h"
 #include "DlgFileBat.h"
 #include "DlgError.h"
-#include "Circle4Array.h"
 
 
 class CCircTgtVSView : public CView
