@@ -12,8 +12,8 @@ class CDlgError : public CDialogEx
 	DECLARE_DYNAMIC(CDlgError)
 
 public:
-	CFont* m_pErrorFont;
-	int m_nErrorType;
+	CFont* m_pErrorFont;		// 字体
+	int m_nErrorType;			// 错误类型，宏定义见上
 	CDlgError(CWnd* pParent = nullptr);   // 标准构造函数
 	virtual ~CDlgError();
 
@@ -27,6 +27,6 @@ protected:
 
 	DECLARE_MESSAGE_MAP()
 public:
-	CStatic m_StaticError;
+	CStatic m_StaticError;		// 静态文本: 错误类型
 	virtual BOOL OnInitDialog();
 };

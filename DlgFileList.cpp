@@ -16,7 +16,7 @@ CDlgFileList::CDlgFileList(CWnd* pParent /*=nullptr*/)
 {
 	m_hView = nullptr;
 	m_pFileList = nullptr;
-	m_listLen = 0;
+	m_nListLen = 0;
 }
 
 CDlgFileList::~CDlgFileList()
@@ -43,7 +43,7 @@ BOOL CDlgFileList::OnInitDialog()
 	CDialogEx::OnInitDialog();
 
 	// TODO:  在此添加额外的初始化
-	for (int i = 0; i < m_listLen; i++)
+	for (int i = 0; i < m_nListLen; i++)
 	{
 		m_lstFileList.InsertString(i, m_pFileList[i]);
 	}

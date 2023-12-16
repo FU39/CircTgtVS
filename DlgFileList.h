@@ -12,7 +12,7 @@ class CDlgFileList : public CDialogEx
 public:
 	HWND m_hView;
 	CString* m_pFileList;
-	int m_listLen;
+	int m_nListLen;
 	CDlgFileList(CWnd* pParent = nullptr);   // 标准构造函数
 	virtual ~CDlgFileList();
 

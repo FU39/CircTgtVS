@@ -21,8 +21,7 @@ public:
 	CString m_csPath;				// 目录路径
 	CString* m_csFileList;			// 目录下文件列表
 	int m_nFileSum;					// 目录下文件总数
-	int m_nIndex;
-	long m_lWidth, m_lHeight;
+	long m_lWidth, m_lHeight;		// 图片宽、高
 	CDlgFileList* m_pDlgFileList;	// 目录选择对话框
 	CDlgFileBat* m_pDlgFileBat;		// 批量处理结果对话框
 
@@ -35,6 +34,7 @@ public:
 // 重写
 public:
 	virtual void OnDraw(CDC* pDC);  // 重写以绘制该视图
+	virtual void OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint);
 	virtual BOOL PreCreateWindow(CREATESTRUCT& cs);
 protected:
 	virtual BOOL OnPreparePrinting(CPrintInfo* pInfo);
@@ -59,7 +59,6 @@ public:
 	afx_msg void OnFileBat();
 	afx_msg LRESULT OnDlgSelFile(WPARAM wParam, LPARAM lParam);
 	afx_msg void OnInfoShow();
-	virtual void OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint);
 };
 
 #ifndef _DEBUG  // CircTgtVSView.cpp 中的调试版本

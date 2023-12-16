@@ -41,7 +41,6 @@ CCircTgtVSView::CCircTgtVSView() noexcept
 	m_csPath = _T("");
 	m_csFileList = nullptr;
 	m_nFileSum = 0;
-	m_nIndex = 0;
 	m_lWidth = 0;
 	m_lHeight = 0;
 	m_pDlgFileList = nullptr;
@@ -329,7 +328,7 @@ void CCircTgtVSView::OnPathSel()
 	}
 	m_pDlgFileList = new CDlgFileList;
 	m_pDlgFileList->m_pFileList = new CString[m_nFileSum];
-	m_pDlgFileList->m_listLen = m_nFileSum;
+	m_pDlgFileList->m_nListLen = m_nFileSum;
 	for (i = 0; i < m_nFileSum; i++)
 	{
 		m_pDlgFileList->m_pFileList[i] = m_csFileList[i];
