@@ -5,6 +5,8 @@
 
 #pragma once
 
+#include "Circle4Array.h"
+
 
 class CCircTgtVSDoc : public CDocument
 {
@@ -17,12 +19,15 @@ public:
 
 // 操作
 public:
-	HGLOBAL m_hDIB;
+	BOOL m_bOpen;							// 图像文件在"目录文件"对话框中选中后是否被打开
+	HGLOBAL m_hDIB;							// 图像 DIB
 	LPBITMAPINFO m_lpInfo;					// 图像 InfoHeader+index 内存起始地址
 	LPBITMAPINFOHEADER m_lpInfoHeader;		// 图像 InfohHeader 内存起始地址
 	RGBQUAD* m_lpRGBQuad;					// 图像如果使用颜色索引，该指针指向内存中颜色索引部分的起始地址
 	UINT m_nTotalColors;					// 图像的色深度,单位 bits
 	BYTE* m_lpData;							// 图像 data 内存起始地址
+	CCircle4Array* m_pCircle;				// 圆目标数据列表
+	long m_lShowW, m_lShowH;				// 显示目标信息的区域
 
 // 重写
 public:
@@ -37,6 +42,9 @@ public:
 public:
 	virtual ~CCircTgtVSDoc();
 	void OpenFile(CString szFileName);
+	void Image2BlackWhite();
+	BYTE* RGB2TwoValue(BYTE* pbDib);
+	BOOL BatchDetectArray(CString szPath, CString* szFileList, int nFileSum);
 #ifdef _DEBUG
 	virtual void AssertValid() const;
 	virtual void Dump(CDumpContext& dc) const;
